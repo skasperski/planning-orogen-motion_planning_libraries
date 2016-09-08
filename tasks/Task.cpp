@@ -48,6 +48,55 @@ bool Task::startHook()
     return true;
 }
 
+void Task::goal_pose_samplesTransformerCallback(const base::Time& ts, const base::samples::RigidBodyState& rbs)
+{
+    // Get the start pose from transformer
+    std::cout << "1" << std::endl;
+    try
+    {
+        Eigen::Affine3d affine;
+        _robot2map.get(ts, affine, true);
+        base::Pose robot_pose(affine);
+        mStartPose.position = robot_pose.position;
+        mStartPose.orientation = robot_pose.orientation;
+    }catch(std::exception &e)
+    {
+        LOG_ERROR("%s", e.what());
+        return;
+    }  
+
+    // Set the given start pose
+    std::cout << "2" << std::endl;
+    double initial_footprint = _initial_footprint.get();
+    State start_state(mStartPose);
+    if(initial_footprint <= 0)
+    {
+        initial_footprint = (_config.get().getMaxRadius() + _config.get().getMinRadius()) / 2.0;
+    }
+    start_state.mFootprintRadius = initial_footprint;
+    if(mpMotionPlanningLibraries->setStartState(start_state))
+    {
+        _start_pose_samples_debug.write(mStartPose);
+    }else
+    {
+        LOG_ERROR("Failed to set start pose in motion planner.");
+        return;
+    }
+    
+    // Set the given goal pose
+    std::cout << "3" << std::endl;
+    mGoalPose = rbs;
+    if(mpMotionPlanningLibraries->setGoalState(State(mGoalPose)))
+    {
+        _goal_pose_samples_debug.write(mGoalPose);
+    }else
+    {
+        LOG_ERROR("Failed to set goal pose in motion planner.");
+        return;
+    }
+    std::cout << "4" << std::endl;
+}
+
 void Task::updateHook()
 {
     TaskBase::updateHook();
@@ -86,22 +135,6 @@ void Task::updateHook()
                 _start_pose_samples_debug.write(mStartPose);
             }
         }
-    } else {   
-        if(_start_pose_samples.readNewest(mStartPose) == RTT::NewData) {
-            double initial_footprint = _initial_footprint.get();
-            State start_state(mStartPose);
-            // Uses the footprint property or calculates the medium set
-            // footprint.
-            // TODO: Use a port supporting the current footprint of the system.
-            if(initial_footprint <= 0) {
-                initial_footprint = (_config.get().getMaxRadius() + 
-                        _config.get().getMinRadius()) / 2.0;
-            }
-            start_state.mFootprintRadius = initial_footprint;
-            if(mpMotionPlanningLibraries->setStartState(start_state)) {
-                _start_pose_samples_debug.write(mStartPose);
-            }
-        }
     }
     
     // Set goal state / pose.
@@ -109,12 +142,6 @@ void Task::updateHook()
          if(_goal_state.readNewest(mGoalState) == RTT::NewData) {
             if(mpMotionPlanningLibraries->setGoalState(mGoalState)) {
                 mGoalPose = mGoalState.mPose;
-                _goal_pose_samples_debug.write(mGoalPose);
-            }
-        }
-    } else {
-        if(_goal_pose_samples.readNewest(mGoalPose) == RTT::NewData) {
-            if(mpMotionPlanningLibraries->setGoalState(State(mGoalPose))) {
                 _goal_pose_samples_debug.write(mGoalPose);
             }
         }

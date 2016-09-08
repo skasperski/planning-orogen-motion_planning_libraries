@@ -45,11 +45,14 @@ task_context "Task" do
     input_port('goal_state', '/motion_planning_libraries/State').
         doc("Defines the goal state.")
         
-    input_port('start_pose_samples', 'base/samples/RigidBodyState').
-        doc("Start pose in the world, using x and y and yaw. If the start state port is not connected this port will be used.")
-        
     input_port('goal_pose_samples', 'base/samples/RigidBodyState').
         doc("Goal pose in the world, using x and y and yaw. If the start state port is not connected this port will be used.")
+      
+    transformer do
+        transform "robot", "map"
+        max_latency 0.1
+        align_port "goal_pose_samples"
+    end  
         
     output_port('waypoints', '/std/vector<base::Waypoint>').
         doc "Waypoint list."

@@ -143,6 +143,8 @@ class Task : public TaskBase
         std::vector <base::Waypoint > mLastPath;
         bool mEscapeTrajAvailable; // For each path we generate only one escape trajectory.
       
+        virtual void goal_pose_samplesTransformerCallback(const base::Time& ts, const base::samples::RigidBodyState& rbs);
+      
     public:
         /** TaskContext constructor for Task
          * \param name Name of the task. This name needs to be unique to make it identifiable via nameservices.
