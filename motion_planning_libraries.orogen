@@ -51,7 +51,6 @@ task_context "Task" do
     transformer do
         transform "robot", "map"
         max_latency 0.1
-        align_port "goal_pose_samples"
     end  
         
     output_port('waypoints', '/std/vector<base::Waypoint>').

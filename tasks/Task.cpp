@@ -36,6 +36,7 @@ bool Task::configureHook()
     mpMotionPlanningLibraries = boost::shared_ptr<MotionPlanningLibraries>(
             new MotionPlanningLibraries(_config.get()));
     
+    _robot2map.registerUpdateCallback(boost::bind(&Task::onPoseUpdate, this, _1));
     return true;
 }
 
@@ -48,10 +49,8 @@ bool Task::startHook()
     return true;
 }
 
-void Task::goal_pose_samplesTransformerCallback(const base::Time& ts, const base::samples::RigidBodyState& rbs)
+void Task::onPoseUpdate(const base::Time& ts)
 {
-    // Get the start pose from transformer
-    std::cout << "1" << std::endl;
     try
     {
         Eigen::Affine3d affine;
@@ -61,12 +60,14 @@ void Task::goal_pose_samplesTransformerCallback(const base::Time& ts, const base
         mStartPose.orientation = robot_pose.orientation;
     }catch(std::exception &e)
     {
-        LOG_ERROR("%s", e.what());
+        LOG_ERROR("Could not get robot pose! (%s)", e.what());
         return;
-    }  
+    }
+}
 
+void Task::onGoalUpdate()
+{
     // Set the given start pose
-    std::cout << "2" << std::endl;
     double initial_footprint = _initial_footprint.get();
     State start_state(mStartPose);
     if(initial_footprint <= 0)
@@ -84,8 +85,6 @@ void Task::goal_pose_samplesTransformerCallback(const base::Time& ts, const base
     }
     
     // Set the given goal pose
-    std::cout << "3" << std::endl;
-    mGoalPose = rbs;
     if(mpMotionPlanningLibraries->setGoalState(State(mGoalPose)))
     {
         _goal_pose_samples_debug.write(mGoalPose);
@@ -94,7 +93,6 @@ void Task::goal_pose_samplesTransformerCallback(const base::Time& ts, const base
         LOG_ERROR("Failed to set goal pose in motion planner.");
         return;
     }
-    std::cout << "4" << std::endl;
 }
 
 void Task::updateHook()
@@ -144,6 +142,12 @@ void Task::updateHook()
                 mGoalPose = mGoalState.mPose;
                 _goal_pose_samples_debug.write(mGoalPose);
             }
+        }
+    }else
+    {
+        if(_goal_pose_samples.readNewest(mGoalPose) == RTT::NewData)
+        {
+            onGoalUpdate();
         }
     }
     
