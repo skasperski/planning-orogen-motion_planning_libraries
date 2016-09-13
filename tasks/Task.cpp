@@ -54,6 +54,7 @@ void Task::onPoseUpdate(const base::Time& ts)
     try
     {
         _robot2map.get(ts, mStartPose, false);
+        _start_pose_samples_debug.write(mStartPose);
     }catch(std::exception &e)
     {
         LOG_ERROR("Could not get robot pose! (%s)", e.what());
@@ -71,20 +72,14 @@ void Task::onGoalUpdate()
         initial_footprint = (_config.get().getMaxRadius() + _config.get().getMinRadius()) / 2.0;
     }
     start_state.mFootprintRadius = initial_footprint;
-    if(mpMotionPlanningLibraries->setStartState(start_state))
-    {
-        _start_pose_samples_debug.write(mStartPose);
-    }else
+    if(!mpMotionPlanningLibraries->setStartState(start_state))
     {
         LOG_ERROR("Failed to set start pose in motion planner.");
         return;
     }
     
     // Set the given goal pose
-    if(mpMotionPlanningLibraries->setGoalState(State(mGoalPose)))
-    {
-        _goal_pose_samples_debug.write(mGoalPose);
-    }else
+    if(!mpMotionPlanningLibraries->setGoalState(State(mGoalPose)))
     {
         LOG_ERROR("Failed to set goal pose in motion planner.");
         return;
@@ -143,6 +138,7 @@ void Task::updateHook()
     {
         if(_goal_pose_samples.readNewest(mGoalPose) == RTT::NewData)
         {
+            _goal_pose_samples_debug.write(mGoalPose);
             onGoalUpdate();
         }
     }
