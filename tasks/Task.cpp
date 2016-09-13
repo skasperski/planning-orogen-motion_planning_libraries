@@ -53,11 +53,7 @@ void Task::onPoseUpdate(const base::Time& ts)
 {
     try
     {
-        Eigen::Affine3d affine;
-        _robot2map.get(ts, affine, true);
-        base::Pose robot_pose(affine);
-        mStartPose.position = robot_pose.position;
-        mStartPose.orientation = robot_pose.orientation;
+        _robot2map.get(ts, mStartPose, false);
     }catch(std::exception &e)
     {
         LOG_ERROR("Could not get robot pose! (%s)", e.what());
